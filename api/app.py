@@ -14,7 +14,7 @@ working_status = os.getenv("DEFALUT_TALKING", default="true").lower() == "true"
 app = Flask(__name__)
 bloom = BLOOM()
 
-# domain root
+
 @app.route("/")
 def home():
     return "Flask ready!"
