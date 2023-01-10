@@ -130,3 +130,7 @@ dmypy.json
 
 # Other
 secret.cfg
+ngrok*
+*.crt
+*.key
+*.conf
