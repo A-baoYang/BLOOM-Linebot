@@ -1,15 +1,17 @@
-import os
+import configparser
 
 from flask import Flask, abort, request
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
-from api.bloom import BLOOM
+from bloom import BLOOM
 
-line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
-line_handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
-working_status = os.getenv("DEFALUT_TALKING", default="true").lower() == "true"
+config = configparser.ConfigParser()
+config.read_file(open("secret.cfg"))
+line_bot_api = LineBotApi(config.get("LINE", "LINE_CHANNEL_ACCESS_TOKEN"))
+line_handler = WebhookHandler(config.get("LINE", "LINE_CHANNEL_SECRET"))
+working_status = True
 
 app = Flask(__name__)
 bloom = BLOOM()
@@ -38,28 +40,27 @@ def callback():
 @line_handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     global working_status
-    if event.message.type != "text":
-        return
 
-    if event.message.text == "說話":
+    # online
+    if event.message.text == "Hey Agent!":
         working_status = True
         line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text="我可以說話囉，歡迎來跟我互動 ^_^ ")
+            event.reply_token,
+            TextSendMessage(text="機器人上線！你可以問我各種事情，像是某個事件的歷史淵源，或是提供一段前文讓我續寫故事"),
         )
         return
 
-    if event.message.text == "閉嘴":
+    # offline
+    if event.message.text == "Bye!":
         working_status = False
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="好的，我乖乖閉嘴 > <，如果想要我繼續說話，請跟我說 「說話」 > <"),
+            TextSendMessage(text="再會！下次再聊！"),
         )
         return
 
     if working_status:
-        bloom.add_msg(f"HUMAN:{event.message.text}?\n")
-        reply_msg = bloom.get_response().replace("AI:", "", 1)
-        bloom.add_msg(f"AI:{reply_msg}\n")
+        reply_msg = bloom.get_response(event.message.text)
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_msg))
 
 
